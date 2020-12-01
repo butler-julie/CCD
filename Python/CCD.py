@@ -11,6 +11,7 @@
 # given in lists
 #
 # TO-DOs: 
+# How long are the t-amplitude lists??
 # Review C++ and make a C++ version of this file
 # Find examples of TBME lists to test the code with
 #################################################

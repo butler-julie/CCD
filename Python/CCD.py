@@ -27,12 +27,14 @@
 # CCD_Corr_Energy(t_amplitudes, N_Fermi, N_sp): Calculates the couple-cluster
 # doubles correlation energy.
 #
-# t_amplitudes_zero(N_sp): 		Calculates the initial t amplitudes for a
+# t_amplitudes_zero(N_sp): Calculates the initial t amplitudes for a
 # couple-cluster doubles iterative calculation.
 #
-# CCD_Update(t_amplitides, N_Fermi, N_sp)
+# CCD_Update(t_amplitides, N_Fermi, N_sp): Updates the t-amplitudes from the 
+# couple-cluster doubles calculation.
 #
-# CCD_Iterate (TBME, SP_energy, N_Fermi, N_sp)
+# CCD_Iterate (TBME, SP_energy, N_Fermi, N_sp)L Calculates the converged 
+# correlation energy from the couple-cluster doubles
 
 #############################
 # IMPORTS
@@ -55,11 +57,12 @@ def index(p, q, r, s, N_sp):
 	return p*N_sp**3 + q*N_sp**2 + r*N_sp + s
 
 # CCD_CORR_ENERGY
-def CCD_Corr_Energy(t_amplitudes, N_Fermi, N_sp):
+def CCD_Corr_Energy(t_amplitudes, TBME, N_Fermi, N_sp):
 	"""
 		Inputs:
 			t_amplitudes (a list): the t amplitudes from the couple cluster
 				doubles calculation
+            TBME (a list): a list of the two body matrix elements                
 			N_Fermi (an int): the number of single particle states below
 				the Fermi level
 			N_sp (an int): the number of single particle states
@@ -81,24 +84,45 @@ def CCD_Corr_Energy(t_amplitudes, N_Fermi, N_sp):
 	return energy
 
 # T_AMPLITUDES_ZERO
-def t_amplitudes_zero(N_sp):
+def t_amplitudes_zero(TBME, N_sp):
 	"""
 		Inputs:
-		Returns
+            TBME (a list): a list of the two body matrix elements        
+			N_sp (an int): the number of single particle states            
+		Returns:
+            t_amplitudes (a list): the initial list of t-amplitudes for the couple-cluster
+                doubles calculation
 		Calculates the initial t amplitudes for a couple-cluster doubles
 		iterative calculation.
 	"""
 	# WHAT WOULD THIS VALUE BE????????????
 	t_amplitudes = np.zeros(len(....))
+    # i and j are below the Fermi level
 	for i in range (0, N_Fermi):
 		for j in range (0, N_Fermi):
+            # a and b are above the Fermi level
 			for a in range (N_Fermi, N_sp):
-				for b in range (N_Fermi, N_sp):					
+				for b in range (N_Fermi, N_sp):		
+                    # Calculate the t amplitude for the specified values of a, b, i, and j
 					t_amplitudes[index(a,b,i,j,N_sp)] = TBME[index(a,b,i,j,N_sp)]/(SP_energy[i] + SP_energy[j] - SP_energy[a] - SP_energy[b])
+    # Return the complete list of initial t amplitudes                    
 	return t_amplitudes	
 
 # CCD_UPDATE
-def CCD_Update(t_amplitides, N_Fermi, N_sp):
+def CCD_Update(t_amplitudes_old, SP_energy, TBME, N_Fermi, N_sp):
+    """
+        Inputs:
+            t_amplitudes_old (a list): the list of t-amplitides from the previous 
+                iteration
+            SP_energy (a list): a list of the single particle energies 
+            TBME (a list): a list of the two body matrix elements            
+			N_Fermi (an int): the number of single particle states below
+				the Fermi level
+			N_sp (an int): the number of single particle states                
+        Returns:
+            t_amplitudes (a list): the updated t-amplitudes
+        Updates the t-amplitudes from the couple-cluster doubles calculation.
+    """
 	t_amplitudes = np.zeros(len(t_amplitudes_old))
 	# i and j are below the Fermi level
 	for i in range (0, N_Fermi):
@@ -106,29 +130,36 @@ def CCD_Update(t_amplitides, N_Fermi, N_sp):
 			# a, b, c, and d are above the Fermi level
 			for a in range (N_Fermi, N_sp):
 				for b in range (N_Fermi, N_sp):
+                    
+                    # Calculate the P-hat coeffiecients
 					P_ijab = P(i,j,a,b)
 					P_ij = P(i,j)
 					P_ab = P(a,b)
-					# Term 1
-					# Calculate the two body matrix element
+                    
+					# Term 1 (term numbers refer to equation 8.36 in LNP 936)
 					sum = TBME[index(a, b, i, j, N_sp)]
+                    
 					# Term 2
+                    # c and d are above the Fermi level
 					for c in range (N_Fermi, N_sp):
 						for d in range (N_Fermi, N_sp):
-							# Add in contributions from particles c and d
 							sum = sum + 0.5*TBME[index(a,b,c,d, N_sp)]*t_amplitudes_old[index(c,d,i,j, N_sp)]
 					
 					# Term 3
+                    # k and l are below the Fermi level
 					for k in range (0, N_Fermi):
 						for l in range (0, N_Fermi):
 							sum = sum + 0.5*TBME[index(k,l,i,j,N_sp)]*t_amplitudes_old[index(a,b,k,l,N_sp)]
 
 					# Term 4
+                    # k is below the Fermi level, c is above the Fermi Level
 					for k in range (0, N_Fermi):
 						for c in range (N_Fermi, N_sp):
 							sum = P_ijab*TBME[index(k,b,c,j, N_sp)]*t_amplitudes_old[index(a,c,i,k,N_sp)]
 
 					# Terms 5-8
+                    # k and l are below the Fermi level
+                    # c and d are above the Fermi level
 					for k in range (0, N_Fermi):
 						for l in range (0, N_Fermi):
 							for c in range (N_Fermi, N_sp):
@@ -147,13 +178,26 @@ def CCD_Update(t_amplitides, N_Fermi, N_sp):
 					
 					# Find the new t amplitudes
 					t_amplitudes[index(a,b,i,j)] = sum/energy_demon
+    # Return the new t-amplitudes                
 	return t_amplitudes
+
 
 # CCD_ITERATE
 def CCD_Iterate (TBME, SP_energy, N_Fermi, N_sp):
+    """
+        Inputs:
+            TBME (a list): a list of the two body matrix elements
+            SP_energy (a list): a list of the single particle energies 
+			N_Fermi (an int): the number of single particle states below
+				the Fermi level
+			N_sp (an int): the number of single particle states  
+        Returns:
+            None.
+        Calculates the converged correlation energy from the couple-cluster doubles
+    """
 	# Calculate the initial t amplitudes and correlation energy
-	t_amplitudes_old = t_amplitudes_zero(N_sp)
-	correlation_Energy_old = CCD_Corr_Energy(t_amplitudes_old, N_Fermi, N_sp)
+	t_amplitudes_old = t_amplitudes_zero(TBME, N_sp)
+	correlation_Energy_old = CCD_Corr_Energy(t_amplitudes_old, TBME, N_Fermi, N_sp)
 
 	# Set the tolerance
 	tolerance = 1e-5
@@ -161,9 +205,9 @@ def CCD_Iterate (TBME, SP_energy, N_Fermi, N_sp):
 	# Iterate until the correlation energy converges
 	while (abs(energy_Diff) > tolerance):
 		# Calculate the new t amplitudes
-		t_amplitudes = CCD_Update(t_amplitides_old, N_Fermi, N_sp)
+		t_amplitudes = CCD_Update(t_amplitides_old, SP_energy,TBME,  N_Fermi, N_sp)
 		# Calculate the new correlation energy
-		correlation_Energy = CCD_Corr_Energy(t_amplitudes, N_Fermi, N_sp)
+		correlation_Energy = CCD_Corr_Energy(t_amplitudes, TBME, N_Fermi, N_sp)
 		# Calculate the energy difference and set up for next loop
 		energy_Diff = correlation_Energy - correlation_Energy_old
 		correlation_Energy_old = correlation_Energy
